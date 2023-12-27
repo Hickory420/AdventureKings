@@ -3,8 +3,8 @@ import argparse
 import json
 import csv
 import os
-import requests
 from urllib.parse import urlparse
+import requests
 
 
 argparse.ArgumentParser(description='Scrape 4WD Supacentre website for URLs')
@@ -44,7 +44,7 @@ def ping_website():
         'sec-fetch-mode': 'cors',
         'sec-fetch-site': 'cross-site',
         'store': 'supacentre',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+        'user-agent': 'Mozilla/5.0'
     }
 
     data = {
@@ -58,7 +58,7 @@ def ping_website():
         }
     
 
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data, timeout=60)
 
     # Print the response
     print(response.text)
@@ -197,7 +197,7 @@ def get_product(id: int, urlKey: str) -> tuple[dict[str, int], str, str, str]:
         """
     }
     result = send_request(data)
-    
+
     name: str = result['data']['productDetail']['items'][0]['name']
     custom_robbon: str = result['data']['productDetail']['items'][0]['custom_ribbon']
     meta_description: str = result['data']['productDetail']['items'][0]['meta_description']
@@ -209,7 +209,7 @@ def get_product(id: int, urlKey: str) -> tuple[dict[str, int], str, str, str]:
     max_fin: int = result['data']['productDetail']['items'][0]['price_range']['maximum_price']['final_price']['value']
     min_reg: int = result['data']['productDetail']['items'][0]['price_range']['minimum_price']['regular_price']['value']
     max_reg: int = result['data']['productDetail']['items'][0]['price_range']['maximum_price']['regular_price']['value']
-   
+
     if min_fin == max_fin == min_reg == max_reg == current_price:
         return {
             'current_price': current_price,
@@ -292,7 +292,7 @@ def get_urls_from_csv() -> list[tuple[str, int, str]]:
 def main():
     if args.batteries:
         get_battery_prices()
-    
+
     csv_result = get_urls_from_csv()
     for row in csv_result:
         if row[1]:
