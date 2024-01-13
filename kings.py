@@ -34,6 +34,10 @@ parser.add_argument('--batteries', '-b',
                     help='Scrape battery prices',
                     action='store_true')
 
+parser.add_argument('--search', '-s',
+                    help='Search for products',
+                    type=str)
+
 args = parser.parse_args()
 
 
@@ -47,16 +51,24 @@ def main():
     4. Prints pricing info for each product
 
     """
+
     if args.file:
         csv_file: str = args.file
     else:
         csv_file: str = 'urls.csv'
 
-    kings.prices_from_csv(csv_file)
 
     if args.batteries:
-        kings.battery_prices()
+        battery_data = kings.battery_prices()
+        kings.print_prices(battery_data, batteries=True)
         raise SystemExit(0)
+
+    if args.search:
+        search_data = kings.search(args.search)
+        kings.print_prices(search_data)
+
+    csv_data = kings.prices_from_csv(csv_file)
+    kings.print_prices(csv_data)
 
 if __name__ == "__main__":
     kings = adventurekings.KingsScraper()
