@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 
+"""Docstring for kings.py. """
 import json
 import csv
 import os
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from typing import Any
 from prettytable import PrettyTable
 import requests
 
 class KingsScraper:
+    """Docstring for KingsScraper. """
     def __init__(self):
         self.table = PrettyTable()
         self.table.align = 'l'
@@ -30,6 +33,7 @@ class KingsScraper:
         self.ping_website()
 
     def ping_website(self):
+        """Docstring for ping_website. """
         # data: The GraphQL query and variables.
         data = {
             'operationName': 'urlResolver',
@@ -77,6 +81,7 @@ class KingsScraper:
 
     def normalize_price(self, data: dict[str, Any]) -> dict[str, Any]:
         """Normalizes the price data."""
+        assert isinstance(data, dict), "data must be a dictionary"
         def convert_to_number(price: str|int|float|None) -> Any:
             if price is not None and price != '':
                 if isinstance(price, str):
@@ -103,11 +108,11 @@ class KingsScraper:
 
         return data
 
-    def search(self, query: str):
+    def search(self, query: str) -> list[dict[str, Any]]:
         """Search for products."""
         page = 0
-        hits_per_page = 50
-        result: list[dict[str, Any]] = []
+        hits_per_page = 9999
+        # result: list[dict[str, Any]] = []
         data: dict[str, list[dict[str, str]]] = {
             'requests': [
                 {
@@ -121,38 +126,23 @@ class KingsScraper:
             'x-algolia-application-id': 'NG7RLXC3B9'
         }
 
-        result.append(self.send_request(data, params=params, search=True))
-        hits = result[0]['results'][0]['hits']
+        result = self.send_request(data, params=params, search=True)
+        hits = result['results'][0]['hits']
         result_list: list[dict[str, Any]] = []
         hit: dict[str, dict[str, dict[str, str]]] = {}
+        result_dict = {}
         for hit in hits:
-            result_list.append(
-                {
-                    'name': hit.get('name', str()),
-                    'url': hit.get('url', str()),
-                    'special_price': hit.get('special_price', str()),
-                    'notes': hit.get('custom_ribbon', str()),
-                    'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
-                }
-            )
-        while result[page]['results'][0]['nbPages'] <= page:
-            page += 1
-            data['requests'][0].update(
-                {
-                    'params': f'hitsPerPage={hits_per_page}&page={page}&query={query}&facets=[]&tagFilters='
-                }
-            )
-            result.append(self.send_request(data, params=params, search=True))
-            for hit in hits:
-                result_list.append(
-                    {
-                        'name': hit.get('name', str()),
-                        'url': hit.get('url', str()),
-                        'special_price': hit.get('special_price', str()),
-                        'notes': hit.get('custom_ribbon', str()),
-                        'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
-                    }
-                )
+            result_dict = {
+                'name': hit.get('name', str()),
+                'url': hit.get('url', str()),
+                'special_price': hit.get('special_price', str()),
+                'notes': hit.get('custom_ribbon', str()),
+                'deal_timer': deal_ends_in(hit.get('deal_timer', str())),
+                'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
+            }
+            result_dict = self.normalize_price(result_dict)
+            result_list.append(result_dict)
+
         return_result: list[dict[str, Any]] = []
         for items in result_list:
             return_result.append(self.normalize_price(items))
@@ -160,6 +150,7 @@ class KingsScraper:
 
     def get_product(self, prodict_id: int, urlkey: str) -> dict[str, int|str]:
         """Get product details from API."""
+
         result: dict[str, Any] = {}
         data = {
             "operationName": "productDetail",
@@ -272,55 +263,248 @@ class KingsScraper:
         result = self.send_request(data)
 
         items: dict[str, Any] = result['data']['productDetail']['items'][0]
-        name: str = items['name']
-        custom_robbon: str = items['custom_ribbon']
-        meta_description: str = items['meta_description']
+
         # Yes, the regular price is the special price and the special price is the regular price.
         # Thanks for that Kings...
-        current_price: int | str = items['special_price']
-        special_price: int | str = items['price']['regularPrice']['amount']['value']
-        min_fin: int = items['price_range']['minimum_price']['final_price']['value']
-        max_fin: int = items['price_range']['maximum_price']['final_price']['value']
-        min_reg: int = items['price_range']['minimum_price']['regular_price']['value']
-        max_reg: int = items['price_range']['maximum_price']['regular_price']['value']
-
         price_data: dict[str, Any] = {
-            'current_price': current_price,
-            'special_price': special_price,
-            'min_fin': min_fin,
-            'max_fin': max_fin,
-            'min_reg': min_reg,
-            'max_reg': max_reg,
-            'name': name,
-            'meta': meta_description,
-            'notes': custom_robbon
+            'current_price': items['special_price'],
+            'special_price': items['price']['regularPrice']['amount']['value'],
+            'min_fin': items['price_range']['minimum_price']['final_price']['value'],
+            'max_fin': items['price_range']['maximum_price']['final_price']['value'],
+            'min_reg': items['price_range']['minimum_price']['regular_price']['value'],
+            'max_reg': items['price_range']['maximum_price']['regular_price']['value'],
+            'name': items['name'],
+            'meta': items['meta_description'],
+            'notes': items['custom_ribbon'],
+            'deal_timer': deal_ends_in(items['deal_timer'])
         }
         result = self.normalize_price(price_data)
 
         # if min_fin == max_fin == min_reg == max_reg == current_price:
-        #     result.update = {
-        #         'current_price': current_price,
-        #         'special_price': special_price,
-        #         'name': name,
-        #         'meta': meta_description,
-        #         'notes': custom_robbon
-        #         }
-        # print('DIFFERENT MIN MAX VARS')
-        # print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
-        # result = {
-        #     'current_price': current_price,
-        #     'special_price': special_price,
-        #     'min_fin': min_fin,
-        #     'max_fin': max_fin,
-        #     'min_reg': min_reg,
-        #     'max_reg': max_reg,
-        #     'name': name,
-        #     'meta': meta_description,
-        #     'notes': custom_robbon
-        # }
+        #     print('DIFFERENT MIN MAX VARS')
+        #     print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
+
         return result
 
-    def battery_prices(self):
+    def daily_deals(self) -> list[dict[str, Any]]:
+        """Get daily deals."""
+        data = {
+            "operationName": "category",
+            "variables": {
+                "currentPage": 1,
+                "filters": {
+                    "category_id": {
+                        "eq": "5229"
+                    }
+                },
+                "sort": {
+                    "position": "ASC"
+                },
+                "pageSize": 999,
+                "id": 5229,
+                "onServer": False
+            },
+            "query": """
+            query category(
+                $id: Int!, 
+                $pageSize: Int!, 
+                $currentPage: Int!, 
+                $onServer: Boolean!, 
+                $filters: ProductAttributeFilterInput!, 
+                $sort: ProductAttributeSortInput
+            ) {
+                category(id: $id) {
+                    id
+                    image
+                    description
+                    display_mode
+                    cms_block {
+                        content
+                        __typename
+                    }
+                    name
+                    product_count
+                    meta_title
+                    meta_keywords @include(if: $onServer)
+                    meta_description
+                    seo_json_data
+                    robots_data
+                    page_layout
+                    url_key
+                    __typename
+                }
+                products(pageSize: $pageSize, currentPage: $currentPage, filter: $filters, sort: $sort) {
+                    items {
+                        __typename
+                        sku
+                        id
+                        in_store_only
+                        emg_free_shipping
+                        exclude_shipping_offer
+                        price_including_delivery
+                        stock_status
+                        deal_timer
+                        custom_ribbon
+                        flatfreight
+                        new_product
+                        name
+                        special_price
+                        price {
+                            regularPrice {
+                                amount {
+                                    currency
+                                    value
+                                    __typename
+                                }
+                                __typename
+                            }
+                            __typename
+                        }
+                        small_image {
+                            url
+                            __typename
+                        }
+                        url_key
+                        url_suffix
+                        ... on ConfigurableProduct {
+                            configurable_options {
+                                attribute_code
+                                attribute_id
+                                id
+                                label
+                                values {
+                                    default_label
+                                    label
+                                    store_label
+                                    use_default_value
+                                    value_index
+                                    __typename
+                                }
+                                __typename
+                            }
+                            variants {
+                                attributes {
+                                    code
+                                    value_index
+                                    __typename
+                                }
+                                product {
+                                    id
+                                    media_gallery_entries {
+                                        id
+                                        disabled
+                                        file
+                                        label
+                                        position
+                                        __typename
+                                    }
+                                    sku
+                                    stock_status
+                                    __typename
+                                }
+                                __typename
+                            }
+                            __typename
+                        }
+                        ... on BundleProduct {
+                            base_price {
+                                value
+                                currency
+                                __typename
+                            }
+                            dynamic_sku
+                            dynamic_price
+                            dynamic_weight
+                            price_view
+                            ship_bundle_items
+                            base_price {
+                                value
+                                currency
+                                __typename
+                            }
+                            items {
+                                title
+                                sku
+                                option_id
+                                type
+                                position
+                                required
+                                options {
+                                    id
+                                    position
+                                    can_change_quantity
+                                    is_default
+                                    quantity
+                                    price
+                                    price_type
+                                    label
+                                    product {
+                                        id
+                                        name
+                                        sku
+                                        status
+                                        stock_status
+                                        emg_free_shipping
+                                        price_including_delivery
+                                        flatfreight
+                                        in_store_only
+                                        special_price
+                                        price {
+                                            regularPrice {
+                                                amount {
+                                                    value
+                                                    __typename
+                                                }
+                                                __typename
+                                            }
+                                            __typename
+                                        }
+                                        __typename
+                                    }
+                                    __typename
+                                }
+                                __typename
+                            }
+                            __typename
+                        }
+                        ... on GiftCardProduct {
+                            giftcard_amounts {
+                                value
+                                __typename
+                            }
+                            allow_open_amount
+                            open_amount_min
+                            open_amount_max
+                            __typename
+                        }
+                    }
+                    page_info {
+                        total_pages
+                        __typename
+                    }
+                    total_count
+                    __typename
+                }
+            }
+            """
+        }
+        result = self.send_request(data)
+        return_result = []
+        dict_result = {}
+        item: list[dict[str,Any]]= result['data']['products']['items']
+        for product in item:
+            dict_result = {
+                'notes': product['custom_ribbon'],
+                'name': product['name'],
+                'deal_timer': deal_ends_in(product['deal_timer']),
+                'special_price': product['price']['regularPrice']['amount']['value'],
+                'current_price': product['special_price']
+                }
+            dict_result = self.normalize_price(dict_result)
+            return_result.append(dict_result)
+        return return_result
+
+    def battery_prices(self) -> list[dict[str, int | str]]:
         """
         Get battery prices and calculate price per amp-hour.
 
@@ -396,6 +580,7 @@ class KingsScraper:
                 'cost_per_Ah': amp_hour_price,
                 'current_price': battery_price['current_price'],
                 'special_price': battery_price['special_price'],
+                'deal_timer': battery_price['deal_timer'],
                 'notes': battery_price['notes']
             })
         return result
@@ -497,17 +682,19 @@ class KingsScraper:
                         'name': column[0],
                         'special_price': product['special_price'],
                         'current_price': product['current_price'],
-                        'notes': product['notes']
+                        'notes': product['notes'],
+                        'deal_timer': product['deal_timer']
                     }
                 )
         return product_result
 
-    def print_prices(self, data: list[dict[Any, Any]], batteries=False):
+    def print_prices(self, data: list[dict[str, Any]], batteries=False):
         """
         Print product name, RRP, sale price and custom ribbon text.
         """
+
         if batteries:
-            self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes"]
+            self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes", "Deal ends in H:M"]
             for battery in data:
                 self.table.add_row(row=
                     [
@@ -515,18 +702,31 @@ class KingsScraper:
                         battery["cost_per_Ah"],
                         battery["current_price"],
                         battery["special_price"],
-                        battery["notes"]
+                        battery["notes"],
+                        battery["deal_timer"]
                     ]
                 )
         else:
-            self.table.field_names = ["Product", "RRP", "Sale", "Notes"]
-            for product in data:
+            sorted_data = sorted(data, key=lambda k: k['name'])
+            self.table.field_names = ["Product", "RRP", "Sale", "Notes", "Deal ends in H:M"]
+            for product in sorted_data:
                 self.table.add_row(row=
                     [
                         product["name"],
                         product["current_price"],
                         product["special_price"],
-                        product["notes"]
+                        product["notes"],
+                        product["deal_timer"]
                     ]
                 )
         print(self.table)
+
+
+def deal_ends_in(end_time):
+    """Docstring for deal_ends_in. """
+    if isinstance(end_time, str) and end_time != '':
+        deal_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+        current_time = datetime.now(timezone.utc)
+        time_remaining = deal_time - current_time
+        return str(time_remaining)
+    return ''

@@ -38,6 +38,10 @@ parser.add_argument('--search', '-s',
                     help='Search for products',
                     type=str)
 
+parser.add_argument('--deals', '-d',
+                    help='Show Daily Deals',
+                    action='store_true')
+
 args = parser.parse_args()
 
 
@@ -66,6 +70,11 @@ def main():
     if args.search:
         search_data = kings.search(args.search)
         kings.print_prices(search_data)
+        raise SystemExit(0)
+
+    if args.deals:
+        deals_data = kings.daily_deals()
+        kings.print_prices(deals_data)
         raise SystemExit(0)
 
     csv_data = kings.prices_from_csv(csv_file)
