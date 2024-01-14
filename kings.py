@@ -66,6 +66,7 @@ def main():
     if args.search:
         search_data = kings.search(args.search)
         kings.print_prices(search_data)
+        raise SystemExit(0)
 
     csv_data = kings.prices_from_csv(csv_file)
     kings.print_prices(csv_data)

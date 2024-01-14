@@ -75,40 +75,92 @@ class KingsScraper:
         #
         return result
 
-    # def search(self, query: str) -> list[dict[str, Any]]:
+    def normalize_price(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Normalizes the price data."""
+        def convert_to_number(price: str|int|float|None) -> Any:
+            if price is not None and price != '':
+                if isinstance(price, str):
+                    try:
+                        return int(price)
+                    except ValueError:
+                        return float(price)
+                return price
+            return price
+
+        if convert_to_number(data['current_price']) == convert_to_number(data['special_price']):
+            data['special_price'] = str()
+
+        if data['current_price'] is None:
+            data['current_price'] = data['special_price']
+            data['special_price'] = str()
+
+        if data['special_price'] is None:
+            data['special_price'] = str()
+
+        if data['notes'] is None:
+            data['notes'] = str()
+
+
+        return data
+
     def search(self, query: str):
         """Search for products."""
+        page = 0
+        hits_per_page = 50
+        result: list[dict[str, Any]] = []
         data: dict[str, list[dict[str, str]]] = {
             'requests': [
                 {
                     'indexName': 'magento2_prod_supacentre_products',
-                    'params': f'query={query}&facets=[]&tagFilters='
+                    'params': f'hitsPerPage={hits_per_page}&page={page}&query={query}&facets=[]&tagFilters='
                 }
             ]
         }
         params: dict[str, str] = {
             'x-algolia-api-key': '6ce617c383a7722031a27ebc6bff6927',
-            'x-algolia-application-id': 'NG7RLXC3B9'  
+            'x-algolia-application-id': 'NG7RLXC3B9'
         }
 
-        result = self.send_request(data, params=params, search=True)
-        return result
+        result.append(self.send_request(data, params=params, search=True))
+        hits = result[0]['results'][0]['hits']
+        result_list: list[dict[str, Any]] = []
+        hit: dict[str, dict[str, dict[str, str]]] = {}
+        for hit in hits:
+            result_list.append(
+                {
+                    'name': hit.get('name', str()),
+                    'url': hit.get('url', str()),
+                    'special_price': hit.get('special_price', str()),
+                    'notes': hit.get('custom_ribbon', str()),
+                    'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
+                }
+            )
+        while result[page]['results'][0]['nbPages'] <= page:
+            page += 1
+            data['requests'][0].update(
+                {
+                    'params': f'hitsPerPage={hits_per_page}&page={page}&query={query}&facets=[]&tagFilters='
+                }
+            )
+            result.append(self.send_request(data, params=params, search=True))
+            for hit in hits:
+                result_list.append(
+                    {
+                        'name': hit.get('name', str()),
+                        'url': hit.get('url', str()),
+                        'special_price': hit.get('special_price', str()),
+                        'notes': hit.get('custom_ribbon', str()),
+                        'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
+                    }
+                )
+        return_result: list[dict[str, Any]] = []
+        for items in result_list:
+            return_result.append(self.normalize_price(items))
+        return return_result
 
-    def get_product(self, prodict_id: int, urlkey: str) -> tuple[dict[str, int], str, str, str]:
-        """Get product details from API.
-
-        Args:
-            prodict_id (int): The product ID
-            urlkey (str): The product URL key
-
-        Returns:
-            tuple[dict, str, str, str]: A tuple containing:
-                - dict: The product price info
-                - str: The product name
-                - str: The meta description
-                - str: The custom ribbon
-        """
-
+    def get_product(self, prodict_id: int, urlkey: str) -> dict[str, int|str]:
+        """Get product details from API."""
+        result: dict[str, Any] = {}
         data = {
             "operationName": "productDetail",
             "variables": {
@@ -225,37 +277,48 @@ class KingsScraper:
         meta_description: str = items['meta_description']
         # Yes, the regular price is the special price and the special price is the regular price.
         # Thanks for that Kings...
-        current_price: int = items['special_price']
-        special_price: int = items['price']['regularPrice']['amount']['value']
+        current_price: int | str = items['special_price']
+        special_price: int | str = items['price']['regularPrice']['amount']['value']
         min_fin: int = items['price_range']['minimum_price']['final_price']['value']
         max_fin: int = items['price_range']['maximum_price']['final_price']['value']
         min_reg: int = items['price_range']['minimum_price']['regular_price']['value']
         max_reg: int = items['price_range']['maximum_price']['regular_price']['value']
 
-        if current_price == special_price:
-            special_price = 0
-
-        if current_price is None:
-            current_price = special_price
-            special_price = 0
-        
-        if custom_robbon is None:
-            custom_robbon = ''
-        if min_fin == max_fin == min_reg == max_reg == current_price:
-            return {
-                'current_price': current_price,
-                'special_price': special_price
-                }, name, meta_description, custom_robbon
-        print('DIFFERENT MIN MAX VARS')
-        print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
-        return {
+        price_data: dict[str, Any] = {
             'current_price': current_price,
             'special_price': special_price,
             'min_fin': min_fin,
             'max_fin': max_fin,
             'min_reg': min_reg,
-            'max_reg': max_reg
-            }, name, meta_description, custom_robbon
+            'max_reg': max_reg,
+            'name': name,
+            'meta': meta_description,
+            'notes': custom_robbon
+        }
+        result = self.normalize_price(price_data)
+
+        # if min_fin == max_fin == min_reg == max_reg == current_price:
+        #     result.update = {
+        #         'current_price': current_price,
+        #         'special_price': special_price,
+        #         'name': name,
+        #         'meta': meta_description,
+        #         'notes': custom_robbon
+        #         }
+        # print('DIFFERENT MIN MAX VARS')
+        # print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
+        # result = {
+        #     'current_price': current_price,
+        #     'special_price': special_price,
+        #     'min_fin': min_fin,
+        #     'max_fin': max_fin,
+        #     'min_reg': min_reg,
+        #     'max_reg': max_reg,
+        #     'name': name,
+        #     'meta': meta_description,
+        #     'notes': custom_robbon
+        # }
+        return result
 
     def battery_prices(self):
         """
@@ -264,12 +327,9 @@ class KingsScraper:
         Loops through a dictionary of batteries and their product IDs.
         Gets the price data for each battery from the API.
         Calculates the price per amp-hour and prints the prices.
-
-        Returns:
-            None
         """
 
-        def price_per_amp_hour(price: dict[str, int], capacity: int):
+        def price_per_amp_hour(price: dict[str, int|str], capacity: int):
             """
             Calculate price per amp hour (Ah) for a battery.
 
@@ -289,7 +349,7 @@ class KingsScraper:
             """
 
             cost = price.get('current_price', 0)
-            cost_per_amp_hour = cost / capacity
+            cost_per_amp_hour = int(cost) / capacity
             return f'{cost_per_amp_hour:.3f}'
 
         batteries: dict[int, tuple[int, str]] = {
@@ -328,15 +388,15 @@ class KingsScraper:
             urlkey = details[1]
             battery_price = self.get_product(product_id, urlkey)
 
-            amp_hour_price = price_per_amp_hour(battery_price[0], battery)
+            amp_hour_price = price_per_amp_hour(battery_price, battery)
             # if battery_price[0]['current_price'] == battery_price[0]['special_price']:
             #     battery_price[0].update({'current_price': 0})
             result.append({
                 'battery': battery,
                 'cost_per_Ah': amp_hour_price,
-                'RRP': battery_price[0]['current_price'],
-                'sale': battery_price[0]['special_price'],
-                'notes': battery_price[3]
+                'current_price': battery_price['current_price'],
+                'special_price': battery_price['special_price'],
+                'notes': battery_price['notes']
             })
         return result
 
@@ -396,11 +456,12 @@ class KingsScraper:
         return urlkey
 
     def prices_from_csv(self, csv_file: str):
+        """ Print prices from a CSV file"""
         # def get_urls_from_csv(csv_file) -> list[tuple[str, int, str]]:
         def get_urls_from_csv(csv_file):
             """Reads a CSV file and extracts the urlKey and product ID for each row.
 
-            The CSV file should contain the product name in the first column, 
+            The CSV file should contain the product name in the first column,
             and the product URL in the second column.
 
             This function extracts the urlKey portion from the URL and looks up the
@@ -434,9 +495,9 @@ class KingsScraper:
                 product_result.append(
                     {
                         'name': column[0],
-                        'sale': product[0]['special_price'],
-                        'RRP': product[0]['current_price'],
-                        'notes': product[3]
+                        'special_price': product['special_price'],
+                        'current_price': product['current_price'],
+                        'notes': product['notes']
                     }
                 )
         return product_result
@@ -444,19 +505,6 @@ class KingsScraper:
     def print_prices(self, data: list[dict[Any, Any]], batteries=False):
         """
         Print product name, RRP, sale price and custom ribbon text.
-
-        Args:
-            product (str): Product name
-            rrp (float): Original recommended retail price
-            sale (float): Current discounted sale price
-            custom_robbon (str): Custom text to display, e.g. 'Best Seller!'
-
-        Prints:
-            A formatted string with product, RRP, sale price and custom text.
-
-        Example:
-            >>> print_prices('Acme Battery', 99.99, 79.99, 'Best Seller!')
-            Acme Battery   RRP:$99.99   Sale: $79.99   Best Seller!
         """
         if batteries:
             self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes"]
@@ -465,8 +513,8 @@ class KingsScraper:
                     [
                         battery["battery"],
                         battery["cost_per_Ah"],
-                        battery["RRP"],
-                        battery["sale"],
+                        battery["current_price"],
+                        battery["special_price"],
                         battery["notes"]
                     ]
                 )
@@ -476,8 +524,8 @@ class KingsScraper:
                 self.table.add_row(row=
                     [
                         product["name"],
-                        product["RRP"],
-                        product["sale"],
+                        product["current_price"],
+                        product["special_price"],
                         product["notes"]
                     ]
                 )
