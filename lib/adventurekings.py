@@ -14,6 +14,7 @@ class KingsScraper:
     """Docstring for KingsScraper. """
     def __init__(self):
         self.table = PrettyTable()
+        self.session = requests.Session()
         self.table.align = 'l'
         self.csv_file = 'urls.csv'
         self.graphql_url = 'https://sc-prod.4wdsc.com/graphql'
@@ -31,6 +32,9 @@ class KingsScraper:
             'user-agent': 'Mozilla/5.0',
         }
         self.ping_website()
+
+    def close_session(self):
+        self.session.close()
 
     def ping_website(self):
         """Docstring for ping_website. """
@@ -69,7 +73,7 @@ class KingsScraper:
             self.headers.update({'content-type': 'application/x-www-form-urlencoded'})
         else:
             url = self.graphql_url
-        response = requests.post(url, params=params ,headers=self.headers, json=payload, timeout=60)
+        response = self.session.post(url, params=params ,headers=self.headers, json=payload, timeout=60)
 
         # Parse the response
         #
@@ -113,7 +117,7 @@ class KingsScraper:
         page = 0
         hits_per_page = 9999
         # result: list[dict[str, Any]] = []
-        data: dict[str, list[dict[str, str]]] = {
+        payload: dict[str, list[dict[str, str]]] = {
             'requests': [
                 {
                     'indexName': 'magento2_prod_supacentre_products',
@@ -126,29 +130,45 @@ class KingsScraper:
             'x-algolia-application-id': 'NG7RLXC3B9'
         }
 
-        result = self.send_request(data, params=params, search=True)
-        hits = result['results'][0]['hits']
+        data = self.send_request(payload, params=params, search=True)
+        products = data['results'][0]['hits']
+        product: dict[str, dict[str, dict[str, str]]] = {}
         result_list: list[dict[str, Any]] = []
-        hit: dict[str, dict[str, dict[str, str]]] = {}
-        result_dict = {}
-        for hit in hits:
+        result_dict: dict[str, Any] = {}
+        for product in products:
             result_dict = {
-                'name': hit.get('name', str()),
-                'url': hit.get('url', str()),
-                'special_price': hit.get('special_price', str()),
-                'notes': hit.get('custom_ribbon', str()),
-                'deal_timer': deal_ends_in(hit.get('deal_timer', str())),
-                'current_price': hit.get('price', {}).get('AUD', {}).get('default', str()),
+                'name': product.get('name', str()),
+                'url': product.get('url', str()),
+                'current_price': product.get('special_price', str()),
+                'notes': product.get('notes', str()),
+                'deal_timer': deal_ends_in(product.get('deal_timer', str())),
+                'special_price': product.get('price', {}).get('AUD', {}).get('default', str()),
+                'product_id': product.get('product_id', str()),
             }
+            # if result_dict['product_id']:
+            #     product_details = self.get_product(result_dict['product_id'], self.extract_urlkey(result_dict['url']))
+            #     result_dict.update(
+            #         {
+            #             'deal_timer': product_details['deal_timer'],
+            #             'notes': product_details['notes']
+            #         }
+            #     )
             result_dict = self.normalize_price(result_dict)
             result_list.append(result_dict)
 
-        return_result: list[dict[str, Any]] = []
-        for items in result_list:
-            return_result.append(self.normalize_price(items))
-        return return_result
+        # return_result: list[dict[str, Any]] = []
+        # for items in result_list:
+        #     if items['product_id']:
+        #         items.update(
+        #             {
+        #                 'deal_timer': product_details['deal_timer']
+        #             }
+        #         )
+        #     return_result.append(items)
+        self.close_session()
+        return result_list
 
-    def get_product(self, prodict_id: int, urlkey: str) -> dict[str, int|str]:
+    def get_product(self, product_id: int, urlkey: str) -> dict[str, int|str]:
         """Get product details from API."""
 
         result: dict[str, Any] = {}
@@ -157,7 +177,7 @@ class KingsScraper:
             "variables": {
                 "onServer": False,
                 "urlKey": urlkey,
-                "id": prodict_id
+                "id": product_id
             },
             "query": """
                 query productDetail($urlKey: String!, $id: Int!, $onServer: Boolean!) {
@@ -283,7 +303,7 @@ class KingsScraper:
         # if min_fin == max_fin == min_reg == max_reg == current_price:
         #     print('DIFFERENT MIN MAX VARS')
         #     print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
-
+        # self.close_session()
         return result
 
     def daily_deals(self) -> list[dict[str, Any]]:
@@ -489,19 +509,29 @@ class KingsScraper:
             """
         }
         result = self.send_request(data)
-        return_result = []
-        dict_result = {}
+        return_result: list[dict[str,Any]] = []
+        dict_result: dict[str,Any] = {}
         item: list[dict[str,Any]]= result['data']['products']['items']
         for product in item:
             dict_result = {
                 'notes': product['custom_ribbon'],
                 'name': product['name'],
-                'deal_timer': deal_ends_in(product['deal_timer']),
+                'deal_timer': product['deal_timer'],
                 'special_price': product['price']['regularPrice']['amount']['value'],
                 'current_price': product['special_price']
-                }
+            }
+            # if product['id']:
+            #     product_details = self.get_product(product['id'], product['url_key'])
+            #     dict_result.update(
+            #         {
+            #             'deal_timer': product_details['deal_timer']
+            #         }
+            #     )
+            # return_result.append(product)
+
             dict_result = self.normalize_price(dict_result)
             return_result.append(dict_result)
+        self.close_session()
         return return_result
 
     def battery_prices(self) -> list[dict[str, int | str]]:
@@ -669,7 +699,7 @@ class KingsScraper:
                     urlkey = self.extract_urlkey(column[1])
                     product_id = self.get_product_id(urlkey)
                     csv_result.append((column[0], product_id, urlkey))
-
+            self.close_session()
             return csv_result
 
         product_result = []
