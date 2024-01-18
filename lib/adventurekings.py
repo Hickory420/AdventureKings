@@ -757,7 +757,7 @@ def deal_ends_in(end_time: str) -> str:
         deal_end_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
         current_time = datetime.now(timezone.utc)
         if current_time > deal_end_time:
-            return ''
+            return str()
         time_remaining = deal_end_time - current_time
         return str(time_remaining).split('.', maxsplit=1)[0]
-    return ''
+    return str()
