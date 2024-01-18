@@ -755,9 +755,10 @@ class KingsScraper:
 def deal_ends_in(end_time):
     """Docstring for deal_ends_in. """
     if isinstance(end_time, str) and end_time != '':
-        deal_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+        deal_end_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
         current_time = datetime.now(timezone.utc)
-        time_remaining = deal_time - current_time
-        return str(time_remaining)
+        if current_time > deal_end_time:
+            return ''
+        time_remaining = deal_end_time - current_time
         return str(time_remaining).split('.', maxsplit=1)[0]
     return ''
