@@ -55,7 +55,7 @@ class KingsScraper:
         # Print the response
         print(response.text)
 
-    def send_request(self, payload, params=None, search=False):
+    def send_request(self, payload: dict[str, Any], params=None, search=False) -> dict[str, Any]:
         """Sends a GraphQL request to the API.
 
         Args:
@@ -308,7 +308,7 @@ class KingsScraper:
 
     def daily_deals(self) -> list[dict[str, Any]]:
         """Get daily deals."""
-        data = {
+        data: dict[str, Any] = {
             "operationName": "category",
             "variables": {
                 "currentPage": 1,
@@ -508,7 +508,7 @@ class KingsScraper:
             }
             """
         }
-        result = self.send_request(data)
+        result: dict[str, Any] = self.send_request(data)
         return_result: list[dict[str,Any]] = []
         dict_result: dict[str,Any] = {}
         item: list[dict[str,Any]]= result['data']['products']['items']
@@ -737,7 +737,7 @@ class KingsScraper:
                     ]
                 )
         else:
-            sorted_data = sorted(data, key=lambda k: k['name'])
+            sorted_data: list[dict[str, Any]] = sorted(data, key=lambda k: k['name'])
             self.table.field_names = ["Product", "RRP", "Sale", "Notes", "Deal ends in H:M"]
             for product in sorted_data:
                 self.table.add_row(row=
@@ -751,8 +751,7 @@ class KingsScraper:
                 )
         print(self.table)
 
-
-def deal_ends_in(end_time):
+def deal_ends_in(end_time: str) -> str:
     """Docstring for deal_ends_in. """
     if isinstance(end_time, str) and end_time != '':
         deal_end_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
