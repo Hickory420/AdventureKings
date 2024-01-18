@@ -136,14 +136,15 @@ class KingsScraper:
         result_list: list[dict[str, Any]] = []
         result_dict: dict[str, Any] = {}
         for product in products:
+            deal_timer = deal_ends_in(end_time=result_dict.get('deal_timer', str()))
             result_dict = {
                 'name': product.get('name', str()),
                 'url': product.get('url', str()),
                 'current_price': product.get('special_price', str()),
                 'notes': product.get('notes', str()),
-                'deal_timer': deal_ends_in(product.get('deal_timer', str())),
+                'deal_timer': deal_timer,
                 'special_price': product.get('price', {}).get('AUD', {}).get('default', str()),
-                'product_id': product.get('product_id', str()),
+                'product_id': product.get('product_id', str())
             }
             # if result_dict['product_id']:
             #     product_details = self.get_product(result_dict['product_id'], self.extract_urlkey(result_dict['url']))
