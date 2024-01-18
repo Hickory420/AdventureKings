@@ -759,4 +759,5 @@ def deal_ends_in(end_time):
         current_time = datetime.now(timezone.utc)
         time_remaining = deal_time - current_time
         return str(time_remaining)
+        return str(time_remaining).split('.', maxsplit=1)[0]
     return ''
