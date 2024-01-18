@@ -724,7 +724,7 @@ class KingsScraper:
         """
 
         if batteries:
-            self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes", "Deal ends in H:M"]
+            self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes", "Deal ends in H:M:S"]
             for battery in data:
                 self.table.add_row(row=
                     [
