@@ -61,7 +61,6 @@ def main():
     else:
         csv_file: str = 'urls.csv'
 
-
     if args.batteries:
         battery_data = kings.battery_prices()
         kings.print_prices(battery_data, batteries=True)
@@ -79,6 +78,7 @@ def main():
 
     csv_data = kings.prices_from_csv(csv_file)
     kings.print_prices(csv_data)
+
 
 if __name__ == "__main__":
     kings = adventurekings.KingsScraper()
