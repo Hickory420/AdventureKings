@@ -50,14 +50,6 @@ parser.add_argument('--write', '-w',
 args = parser.parse_args()
 
 
-def write_to_file(data: list[dict[str, Any]], file: str):
-    """
-    Writes data to a file.
-    """
-    print(f'writing to file {args.write}')
-    with open(file, mode='w', encoding='utf-8') as f:
-        f.write(f'{data}')
-
 def main():
     """
     The main function that runs the key steps:

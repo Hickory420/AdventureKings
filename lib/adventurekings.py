@@ -809,6 +809,14 @@ class KingsScraper:
                 )
         print(self.table)
 
+    def write_to_file(self, data: list[dict[str, Any]], file: str):
+        """
+        Writes data to a file.
+        """
+        print(f'writing to file {file}')
+        with open(file, mode='w', encoding='utf-8') as f:
+            f.write(json.dumps(data))
+
 
 def deal_ends_in(end_time: str) -> str:
     """
