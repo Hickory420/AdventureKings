@@ -17,7 +17,6 @@ The main capabilities are:
 """
 
 import argparse
-from typing import Any
 from lib import adventurekings
 
 
@@ -67,30 +66,18 @@ def main():
         csv_file: str = 'urls.csv'
 
     if args.batteries:
-        battery_data = kings.battery_prices()
-        kings.print_prices(battery_data, batteries=True)
-        if args.write:
-            write_to_file(battery_data, args.write)
-        raise SystemExit(0)
+        data = kings.battery_prices()
+    elif args.search:
+        data = kings.search(args.search)
+    elif args.deals:
+        data = kings.daily_deals()
+    else:
+        data = kings.prices_from_csv(csv_file)
 
-    if args.search:
-        search_data = kings.search(args.search)
-        kings.print_prices(search_data)
-        if args.write:
-            write_to_file(search_data, args.write)
-        raise SystemExit(0)
-
-    if args.deals:
-        deals_data = kings.daily_deals()
-        kings.print_prices(deals_data)
-        if args.write:
-            write_to_file(deals_data, args.write)
-        raise SystemExit(0)
-
-    csv_data = kings.prices_from_csv(csv_file)
-    kings.print_prices(csv_data)
     if args.write:
-        write_to_file(csv_data, args.write)
+        kings.write_to_file(data, args.write)
+    else:
+        kings.print_prices(data, batteries=args.batteries)
 
 
 if __name__ == "__main__":
