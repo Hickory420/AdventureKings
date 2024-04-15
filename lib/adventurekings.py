@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Docstring for kings.py. """
+"""Docstring"""
 import json
 import csv
 import os
@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from typing import Any
 from prettytable import PrettyTable
 import requests
+
 
 class KingsScraper:
     '''DocString'''
@@ -44,11 +45,11 @@ class KingsScraper:
             'operationName': 'urlResolver',
             'variables': {},
             'query': 'query urlResolver {'
-                    '    urlResolver(url: "/") {'
-                    '        entity_uid'
-                    '        __typename'
-                    '    }'
-                    '}'
+            '    urlResolver(url: "/") {'
+            '        entity_uid'
+            '        __typename'
+            '    }'
+            '}'
         }
 
         response = requests.post(self.graphql_url, headers=self.headers, json=data, timeout=60)
@@ -112,7 +113,7 @@ class KingsScraper:
 
         assert isinstance(data, dict), "data must be a dictionary"
 
-        def convert_to_number(price: str|int|float|None) -> Any:
+        def convert_to_number(price: str | int | float | None) -> Any:
             if price is not None and price != '':
                 if isinstance(price, str):
                     try:
@@ -134,7 +135,6 @@ class KingsScraper:
 
         if data['notes'] is None:
             data['notes'] = str()
-
 
         return data
 
@@ -214,7 +214,7 @@ class KingsScraper:
         self.close_session()
         return result_list
 
-    def get_product(self, product_id: int, urlkey: str) -> dict[str, int|str]:
+    def get_product(self, product_id: int, urlkey: str) -> dict[str, int | str]:
         """Get product details from API."""
 
         result: dict[str, Any] = {}
@@ -555,9 +555,9 @@ class KingsScraper:
             """
         }
         result: dict[str, Any] = self.send_request(data)
-        return_result: list[dict[str,Any]] = []
-        dict_result: dict[str,Any] = {}
-        item: list[dict[str,Any]]= result['data']['products']['items']
+        return_result: list[dict[str, Any]] = []
+        dict_result: dict[str, Any] = {}
+        item: list[dict[str, Any]] = result['data']['products']['items']
         for product in item:
             dict_result = {
                 'notes': product['custom_ribbon'],
@@ -589,7 +589,7 @@ class KingsScraper:
         Calculates the price per amp-hour and prints the prices.
         """
 
-        def price_per_amp_hour(price: dict[str, int|str], capacity: int):
+        def price_per_amp_hour(price: dict[str, int | str], capacity: int):
             """
             Calculate price per amp hour (Ah) for a battery.
 
@@ -617,47 +617,47 @@ class KingsScraper:
 
         batteries: dict[int, tuple[int, str]] = {
             10: (
-                    40689,
-                    '10000mah-power-bank-blue'
-                ),
+                40689,
+                '10000mah-power-bank-blue'
+            ),
             12: (
-                    40698,
-                    '12ah-lithium-portable-power-pack'
-                ),
+                40698,
+                '12ah-lithium-portable-power-pack'
+            ),
             20: (
-                    40968,
-                    'blue-10000mah-lithium-power-bank-pink-10000mah-lithium-power-bank'
-                ),
+                40968,
+                'blue-10000mah-lithium-power-bank-pink-10000mah-lithium-power-bank'
+            ),
             24: (
-                    40695,
-                    '24ah-lithium-portable-power-pack'
-                ),
+                40695,
+                '24ah-lithium-portable-power-pack'
+            ),
             60: (
-                    40833,
-                    '60ah-lithium-lite-battery'
-                ),
+                40833,
+                '60ah-lithium-lite-battery'
+            ),
             # 100: (
-            #         41598,
-            #         '100ah-slimline-lithium-battery'
-            #     ),
+            #     41598,
+            #     '100ah-slimline-lithium-battery'
+            # ),
             100: (
-                    42845,
-                    '100ah-lithium-battery'
-                ),
+                42845,
+                '100ah-lithium-battery'
+            ),
             120: (
-                    20328,
-                    'kings-120ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
-                ),
+                20328,
+                'kings-120ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
+            ),
             200: (
-                    20331,
-                    'kings-200ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
-                ),
+                20331,
+                'kings-200ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
+            ),
             300: (
-                    38319,
-                    '300ah-lithium-battery'
-                )
+                38319,
+                '300ah-lithium-battery'
+            )
         }
-        result: list[dict[str, int|str]] = []
+        result: list[dict[str, int | str]] = []
         for battery, details in batteries.items():
             product_id = details[0]
             urlkey = details[1]
@@ -697,7 +697,7 @@ class KingsScraper:
             >>> get_product_id('https://www.4wdsupacentre.com.au/arb-air-compressor-12v')
             40637
         """
-        url = webpage.replace('https://www.4wdsupacentre.com.au', '').replace(' ','')
+        url = webpage.replace('https://www.4wdsupacentre.com.au', '').replace(' ', '')
         payload: dict[str, str] = {
             "query": f"""
                 {{
@@ -784,8 +784,8 @@ class KingsScraper:
         if batteries:
             self.table.field_names = ["AH", "$/Ah", "RRP", "Sale", "Notes", "Deal ends in H:M:S"]
             for battery in data:
-                self.table.add_row(row=
-                    [
+                self.table.add_row(
+                    row=[
                         battery["battery"],
                         battery["cost_per_Ah"],
                         battery["current_price"],
@@ -798,8 +798,8 @@ class KingsScraper:
             sorted_data: list[dict[str, Any]] = sorted(data, key=lambda k: k['name'])
             self.table.field_names = ["Product", "RRP", "Sale", "Notes", "Deal ends in H:M"]
             for product in sorted_data:
-                self.table.add_row(row=
-                    [
+                self.table.add_row(
+                    row=[
                         product["name"],
                         product["current_price"],
                         product["special_price"],
