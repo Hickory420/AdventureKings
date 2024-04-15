@@ -17,8 +17,8 @@ The main capabilities are:
 """
 
 import argparse
-from lib import adventurekings
 from typing import Any
+from lib import adventurekings
 
 
 argparse.ArgumentParser(description='Scrape 4WD Supacentre website for URLs')

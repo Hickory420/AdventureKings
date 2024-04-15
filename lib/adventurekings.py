@@ -11,6 +11,7 @@ from prettytable import PrettyTable
 import requests
 
 class KingsScraper:
+    '''DocString'''
     def __init__(self):
         self.table = PrettyTable()
         self.session = requests.Session()
@@ -61,8 +62,8 @@ class KingsScraper:
         Args:
             payload (dict[str, Any]): The request payload.
             params (dict, optional): Query parameters.
-            search (bool, optional): Whether this is a search request. 
-                If True, sends request to search API. If False, sends 
+            search (bool, optional): Whether this is a search request.
+                If True, sends request to search API. If False, sends
                 request to GraphQL API.
 
         Returns:
@@ -76,7 +77,13 @@ class KingsScraper:
         else:
             url = self.graphql_url
 
-        response = self.session.post(url, params=params, headers=self.headers, json=payload, timeout=60)
+        response = self.session.post(
+            url,
+            params=params,
+            headers=self.headers,
+            json=payload,
+            timeout=60
+        )
 
         # Parse the response
         result: dict[str, Any] = json.loads(response.text)
@@ -95,21 +102,21 @@ class KingsScraper:
 
         Returns:
             dict: Product data with normalized price fields.
-        
+
         Details:
             - Checks if current_price and special_price match and clears special_price if so
             - Sets current_price to special_price if current_price is missing
             - Clears special_price if it is missing
             - Sets notes to empty string if missing
         """
-        
+
         assert isinstance(data, dict), "data must be a dictionary"
 
         def convert_to_number(price: str|int|float|None) -> Any:
             if price is not None and price != '':
                 if isinstance(price, str):
                     try:
-                        return int(price) 
+                        return int(price)
                     except ValueError:
                         return float(price)
                 return price
@@ -134,14 +141,14 @@ class KingsScraper:
     def search(self, query: str) -> list[dict[str, Any]]:
         """Search for products and return a list of product details.
 
-        This method takes a search query string, searches the product index using 
+        This method takes a search query string, searches the product index using
         the Algolia API, and returns a list of product detail dictionaries containing:
 
         - name: Product name
-        - url: Product URL 
+        - url: Product URL
         - current_price: Current price (converted to int/float if possible)
-        - notes: Product notes 
-        - deal_timer: Deal timer info 
+        - notes: Product notes
+        - deal_timer: Deal timer info
         - special_price: Original non-sale price
         - product_id: Algolia product ID
 
@@ -154,9 +161,9 @@ class KingsScraper:
             query (str): Search query string
 
         Returns:
-            list[dict]: List of product detail dictionaries  
+            list[dict]: List of product detail dictionaries
         """
-        
+
         page = 0
         hits_per_page = 9999
         # result: list[dict[str, Any]] = []
@@ -365,11 +372,11 @@ class KingsScraper:
             },
             "query": """
             query category(
-                $id: Int!, 
-                $pageSize: Int!, 
-                $currentPage: Int!, 
-                $onServer: Boolean!, 
-                $filters: ProductAttributeFilterInput!, 
+                $id: Int!,
+                $pageSize: Int!,
+                $currentPage: Int!,
+                $onServer: Boolean!,
+                $filters: ProductAttributeFilterInput!,
                 $sort: ProductAttributeSortInput
             ) {
                 category(id: $id) {
@@ -591,7 +598,8 @@ class KingsScraper:
             price dictionary.
 
             Args:
-                price (dict[str, int]): Dictionary containing price info, expected to have a 'current_price' key
+                price (dict[str, int]): Dictionary containing price info,
+                                        expected to have a 'current_price' key
                 capacity (int): Battery capacity in amp hours
 
             Returns:
@@ -603,7 +611,7 @@ class KingsScraper:
             if price.get('special_price', 0):
                 cost = price.get('special_price', 0)
             else:
-                cost = price.get('current_price', 0) 
+                cost = price.get('current_price', 0)
             cost_per_amp_hour = int(cost) / capacity
             return f'{cost_per_amp_hour:.3f}'
 
@@ -727,7 +735,7 @@ class KingsScraper:
         """ Print prices from a CSV file"""
         # def get_urls_from_csv(csv_file) -> list[tuple[str, int, str]]:
         def get_urls_from_csv(csv_file):
-            
+
             csv_result = []
 
             with open(csv_file, 'r', encoding='utf-8') as f:
@@ -758,17 +766,17 @@ class KingsScraper:
     def print_prices(self, data: list[dict[str, Any]], batteries=False):
         """Print product prices from a list of product data dictionaries.
 
-        This function takes a list of product data dictionaries containing info like 
+        This function takes a list of product data dictionaries containing info like
         name, current price, sale price, etc. It prints this data in a nicely formatted
-        table, with column names customized based on whether it is showing battery 
+        table, with column names customized based on whether it is showing battery
         or regular product data.
 
         It sorts regular products alphabetically by name before printing.
 
         Args:
-            data (list[dict]): List of product data dicts with keys like 
+            data (list[dict]): List of product data dicts with keys like
                 name, current_price, special_price, etc.
-            batteries (bool): Whether this data is for batteries. 
+            batteries (bool): Whether this data is for batteries.
                 If True, uses different column names.
 
         """
@@ -804,7 +812,7 @@ class KingsScraper:
 
 def deal_ends_in(end_time: str) -> str:
     """
-    Calculate the time remaining until the deal end time and 
+    Calculate the time remaining until the deal end time and
     return it as a string in the format H:M:S.
 
     Parameters:
