@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#  pylint: disable=line-too-long
+
 """Docstring"""
 import json
 import csv
