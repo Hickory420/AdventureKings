@@ -330,28 +330,31 @@ class KingsScraper:
         }
         result = self.send_request(data)
 
-        items: dict[str, Any] = result['data']['productDetail']['items'][0]
+        try:
+            items: dict[str, Any] = result['data']['productDetail']['items'][0]
 
-        # Yes, the regular price is the special price and the special price is the regular price.
-        # Thanks for that Kings...
-        price_data: dict[str, Any] = {
-            'current_price': items['special_price'],
-            'special_price': items['price']['regularPrice']['amount']['value'],
-            'min_fin': items['price_range']['minimum_price']['final_price']['value'],
-            'max_fin': items['price_range']['maximum_price']['final_price']['value'],
-            'min_reg': items['price_range']['minimum_price']['regular_price']['value'],
-            'max_reg': items['price_range']['maximum_price']['regular_price']['value'],
-            'name': items['name'],
-            'meta': items['meta_description'],
-            'notes': items['custom_ribbon'],
-            'deal_timer': deal_ends_in(items['deal_timer'])
-        }
-        result = self.normalize_price(price_data)
+            # Yes, the regular price is the special price and the special price is the regular price.
+            # Thanks for that Kings...
+            price_data: dict[str, Any] = {
+                'current_price': items['special_price'],
+                'special_price': items['price']['regularPrice']['amount']['value'],
+                'min_fin': items['price_range']['minimum_price']['final_price']['value'],
+                'max_fin': items['price_range']['maximum_price']['final_price']['value'],
+                'min_reg': items['price_range']['minimum_price']['regular_price']['value'],
+                'max_reg': items['price_range']['maximum_price']['regular_price']['value'],
+                'name': items['name'],
+                'meta': items['meta_description'],
+                'notes': items['custom_ribbon'],
+                'deal_timer': deal_ends_in(items['deal_timer'])
+            }
+            result = self.normalize_price(price_data)
 
-        # if min_fin == max_fin == min_reg == max_reg == current_price:
-        #     print('DIFFERENT MIN MAX VARS')
-        #     print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
-        # self.close_session()
+            # if min_fin == max_fin == min_reg == max_reg == current_price:
+            #     print('DIFFERENT MIN MAX VARS')
+            #     print(min_fin, max_fin, min_reg, max_reg, current_price, name, meta_description, custom_robbon)
+            # self.close_session()
+        except IndexError:
+            return {}
         return result
 
     def daily_deals(self) -> list[dict[str, Any]]:
@@ -754,15 +757,18 @@ class KingsScraper:
         for column in csv_result:
             if column[1]:
                 product = self.get_product(column[1], column[2])
-                product_result.append(
-                    {
-                        'name': column[0],
-                        'special_price': product['special_price'],
-                        'current_price': product['current_price'],
-                        'notes': product['notes'],
-                        'deal_timer': product['deal_timer']
-                    }
-                )
+                if product:
+                    product_result.append(
+                        {
+                            'name': column[0],
+                            'special_price': product['special_price'],
+                            'current_price': product['current_price'],
+                            'notes': product['notes'],
+                            'deal_timer': product['deal_timer']
+                        }
+                    )
+                else:
+                    print(f'Product not found: {column[0]}')
         return product_result
 
     def print_prices(self, data: list[dict[str, Any]], batteries=False):
