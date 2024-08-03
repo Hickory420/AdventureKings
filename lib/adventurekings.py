@@ -620,55 +620,78 @@ class KingsScraper:
             cost_per_amp_hour = int(cost) / capacity
             return f'{cost_per_amp_hour:.3f}'
 
-        batteries: dict[int, tuple[int, str]] = {
-            10: (
+        def rank_battery_price(result: list[dict[str, int | str]]):
+            """Ranks batteries based on cost_per_Ah and sorts them."""
+
+            # Sort the batteries by cost_per_Ah
+            result.sort(key=lambda x: float(x['cost_per_Ah']), reverse=True)
+
+            # Assign ranks based on sorted order
+            for i, battery_data in enumerate(result):
+                battery_data['rank'] = i + 1
+
+            return result
+
+        batteries: dict[str, tuple[int, int, str]] = {
+            "10-bank": (
+                10,
                 40689,
                 '10000mah-power-bank-blue'
             ),
-            12: (
-                40698,
-                '12ah-lithium-portable-power-pack'
-            ),
-            20: (
+            "2x10-bank": (
+                20,
                 40968,
                 'blue-10000mah-lithium-power-bank-pink-10000mah-lithium-power-bank'
             ),
-            24: (
+            "12-pack": (
+                12,
+                40698,
+                '12ah-lithium-portable-power-pack'
+            ),
+            "24-pack": (
+                24,
                 40695,
                 '24ah-lithium-portable-power-pack'
             ),
-            60: (
+            "60": (
+                60,
                 40833,
                 '60ah-lithium-lite-battery'
             ),
-            # 100: (
-            #     41598,
-            #     '100ah-slimline-lithium-battery'
-            # ),
-            100: (
+            "100-slim": (
+                100,
+                41598,
+                '100ah-slimline-lithium-battery'
+            ),
+            "100": (
+                100,
                 42845,
                 '100ah-lithium-battery'
             ),
-            120: (
+            "120": (
+                120,
                 20328,
                 'kings-120ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
             ),
-            200: (
+            "200": (
+                200,
                 20331,
                 'kings-200ah-lithium-lifepo4-battery-quality-integrated-bms-2000-plus-cycles-long-life'
             ),
-            300: (
+            "300": (
+                300,
                 38319,
                 '300ah-lithium-battery'
             )
         }
         result: list[dict[str, int | str]] = []
         for battery, details in batteries.items():
-            product_id = details[0]
-            urlkey = details[1]
+            capacity = details[0]
+            product_id = details[1]
+            urlkey = details[2]
             battery_price = self.get_product(product_id, urlkey)
 
-            amp_hour_price = price_per_amp_hour(battery_price, battery)
+            amp_hour_price = price_per_amp_hour(battery_price, capacity)
             # if battery_price[0]['current_price'] == battery_price[0]['special_price']:
             #     battery_price[0].update({'current_price': 0})
             result.append({
@@ -679,7 +702,8 @@ class KingsScraper:
                 'deal_timer': battery_price['deal_timer'],
                 'notes': battery_price['notes']
             })
-        return result
+        ranked_result = rank_battery_price((result))
+        return ranked_result
 
     def get_product_id(self, webpage: str) -> int:
         """
