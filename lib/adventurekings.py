@@ -188,7 +188,7 @@ class KingsScraper:
         result_list: list[dict[str, Any]] = []
         result_dict: dict[str, Any] = {}
         for product in products:
-            deal_timer = deal_ends_in(end_time=result_dict.get('deal_timer', str()))
+            deal_timer = deal_ends_in(end_time=product.get('deal_timer', str()))
             name = str(product.get('name', str()))
             if query.lower() in name.lower():
                 result_dict = {
